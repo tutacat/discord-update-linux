@@ -1,0 +1,59 @@
+#!/bin/env python3
+import json
+import os
+import requests
+import signal
+
+data_home = os.environ["XDG_DATA_HOME"] or os.path.join(os.environ["HOME"], "/.local/share");
+do_restart = False;
+discord_dir = os.path.join(data_home, "Discord");
+build_info=f"{discord_dir}/resources/build_info.json";
+version = (0,0,0);
+platform = "linux";
+format = "tar.gz";
+release_channel = "stable";
+
+download_url = f"https://discord.com/api/download/{channel}?platform={platform}&format={format}"
+
+if os.path.isfile(build_info):
+    info = json.load(open(build_info))
+    release_channel = info["releaseChannel"]
+    version = tuple(info["version"].split("."))
+
+#echo channel: $releaseChannel, current_version: $version
+sysname = os.uname().sysname
+if not (platform == "linux" and sysname == "Linux"):
+    print(f"Unexpected platform? Target is {platform} but host kernel is {sysname}?");
+
+def get_version():
+    x = requests.head(download_url)
+    curl --head "${download_url}" \
+     | grep -i '^location' \
+     | cut -f 2;
+}
+latest = get_version()
+
+if latest > version:
+    print("New Discord version is available.");
+    if os.isatty(1):
+        ans = input("Would you like to update? (Y/n)");
+        if ans.strip().lower()[0] == "n":
+            print("OK, quitting...")
+            exit(0)
+    procs = subprocess.getoutput(("pgrep","-x","Discord")).split("\n")
+    if procs: do_restart = True
+    for p in procs:
+        os.kill(int(p), signal.SIGTERM)
+    data = requests.get(download_url).content
+    stat = subprocess.run(('tar -cxz -C "$XDG_DATA_HOME" Discord' ), shell=True, input=data)
+    if stat.returncode < 1:
+        stat = subprocess.run(("bash","~/.local/share/Discord/postinst.sh"))
+    else:
+        echo "An error occured.";
+else:
+    print("Available Discord version is not higher than current version.")
+    exit 0
+
+if do_restart:
+    os.system('gio launch "${XDG_DATA_HOME:-$HOME/.local/share}/applications/discord-stable.desktop" -- </dev/null 2>&1 >/dev/null & sleep 0.1; disown -a -h')
+
