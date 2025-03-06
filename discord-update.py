@@ -25,9 +25,6 @@ def get_web_version():
     return location.split("=",1)[-1]
 
 
-### Official postinst.sh
-#def discord_postint():
-#    return subprocess.run(("bash", os.path.join(discord_inst, "postinst.sh")))
 
 ### Built-in post-inst
 def discord_postinst():
@@ -38,7 +35,7 @@ def discord_postinst():
     for path in (f"{DIR}/.config/discord/Cache", f"{DIR}/.config/discord/GPUCache"):
         shutil.rmtree(path)
     ### check file owners
-    settings_dat = f"{HOME}/.config/Crashpad/settings.dat"
+    settings_dat = f"{DIR}/.config/Crashpad/settings.dat"
     owner = os.stat(settings_dat).st_uid
 
     if os.getuid() != owner:
@@ -51,7 +48,8 @@ def discord_postinst():
         else:
             print("This is unexpected.")
             print("You should either remove the directory tree (.config/discord/Crashpad), or take ownership")
-        exit(1)
+        return 1
+    return 0
 
 
 data_home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share");
@@ -65,17 +63,27 @@ version = (0,0,0);
 platform = "linux";
 format = "tar.gz";
 release_channel = "stable";
+proc_name = "Discord"
 
-download_url = f"https://discord.com/api/download/{release_channel}?platform={platform}&format={format}"
 
-if os.path.isfile("install.conf"):
+download_url = "https://discord.com/api/download/{release_channel}?platform={platform}&format={format}"
+
+if os.path.isfile("discord_install.conf"):
     with open("install.conf") as file:
         conf = [v.split("=",1) for v in file.read().split("\n") if not v.lstrip()[0].startsWith("#")]
         conf = {v[0]:v[1] for v in conf}
-    if "discord_install_parent" in conf:
+
+    if "install_parent" in conf:
         discord_inst = conf["discord_install_parent"]
-    if "discord_tarball_url" in conf:
+    if "tarball_url" in conf:
         download_url = conf["discord_tarball_url"]
+    if "proc_name" in conf:
+        proc_name = conf["discord_proc_name"]
+    if "official_postinst" in conf:
+        if conf["discord_use_postinst"].strip().lower() in {"y","yes","true","1"}:
+            ### Official postinst.sh
+            def discord_postint():
+                return subprocess.run(("bash", os.path.join(discord_inst, "postinst.sh")))
 
 
 
@@ -108,7 +116,7 @@ if latest_version > current_version:
             print("OK, quitting...")
             exit(0)
     do_restart = False;
-    procs = subprocess.getoutput("pgrep -x Discord").split("\n")
+    procs = subprocess.run(("pgrep", "-x", proc_name),capture_output=True).stdout.decode().split("\n")
     log("procs:",procs)
     if procs and procs[-1]:
         do_restart = True
@@ -117,7 +125,10 @@ if latest_version > current_version:
     update_file = tempfile.NamedTemporaryFile(delete=False, delete_on_close=False)
     update_path = update_file.path
     update_file.close()
-    urllib.request.urlretrieve(download_url, update_path)
+    urllib.request.urlretrieve(
+        download_url.format(release_channel=release_channel, platform=platform, format=format),
+        update_path
+    )
     quot = "'"
     escquot = "'\\''"
     stat = subprocess.run(
@@ -128,7 +139,7 @@ if latest_version > current_version:
         ), capture_output=True)
     os.remove(update_path)
     if stat.returncode < 1:
-        stat = discord_postinst()
+        returncode = discord_postinst()
     else:
         print("An error occured extracting Discord");
         print(stat.stdout.decode(), stat.stderr.decode(), sep="\n")
