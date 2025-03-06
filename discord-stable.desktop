@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Exec=/usr/bin/sh -c '$HOME/.local/share/Discord/Discord'
+Hidden=false
+NoDisplay=false
+Name=Discord
+Icon=$HOME/.local/share/Discord/discord.png
+Comment=Text and voice chat for gamers.
+X-GNOME-Autostart-enabled=true
