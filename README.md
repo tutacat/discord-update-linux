@@ -1,6 +1,6 @@
 # discord-update-linux
 
-Helper script to install Discord to the user directory instead of /opt (no root)
+Helper script to install/update Discord in the user directory (or other) instead of just /opt (no root needed.)
 
 ##### Changing installation location
 You can simple change the discord_install location, using `discord_install.conf`, if it is not to your liking. i.e.:
